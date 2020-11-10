@@ -57,9 +57,12 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
       }
     });
   }
+  else if (request.method === 'notify') {
+    notify(request);
+  }
   else if (request.method === 'download') {
     chrome.storage.local.get({
-      pretendHD: false,
+      pretendHD: true,
       opusmixing: false,
       doMerge: true,
       toAudio: true,
@@ -74,85 +77,96 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
         muxing: '-loglevel error -i %audio -i %video -acodec copy -vcodec copy %output'
       }
     }, prefs => {
-      download.get(request, prefs).then(
-        ds => {
-          const vInfo = ds.filter(d => d.dash !== 'a').shift() || ds[0];
-          const aInfo = ds.filter(d => d !== vInfo).shift();
-          const root = prefs.savein || ffmpeg.parent(vInfo.filename);
-          let [leafname, extension] = ffmpeg.extract(vInfo.filename);
-          extension = vInfo.extension || extension;
+      const progress = progress => {
+        if (sender.tab) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            method: 'progress',
+            progress,
+            itag: request.format.itag
+          });
+        }
+        else {
+          chrome.runtime.sendMessage({
+            method: 'progress',
+            progress,
+            itag: request.format.itag
+          });
+        }
+      };
 
-          // audio and video muxing
-          if (ds.length === 2 && prefs.doMerge && !prefs.ffmpeg) {
-            notify({
-              message: 'message_2',
-              isClickable: true,
-              requireInteraction: true
+      download.get(request, prefs, progress).then(ds => {
+        const vd = ds.length === 1 ? ds[0] : (ds.filter(o => o.mime.startsWith('video')).shift() || ds[0]);
+        const root = prefs.savein || ffmpeg.parent(vd.filename);
+        let [leafname, extension] = ffmpeg.extract(vd.filename);
+        let ad;
+        // if audio leafname is smaller than video one, use it as the leafname
+        if (ds.length > 1) {
+          ad = ds.filter(d => d !== vd).shift();
+          const [name] = ffmpeg.extract(ad.filename);
+          if (name.length < leafname.length) {
+            leafname = name;
+          }
+        }
+        leafname = leafname.replace(' - DASH_V', '').replace(' - DASH_A', '');
+
+        // audio and video muxing
+        if (ds.length === 2 && prefs.doMerge && !prefs.ffmpeg) {
+          notify({
+            message: 'message_2',
+            isClickable: true,
+            requireInteraction: true
+          });
+          window.setTimeout(() => chrome.runtime.openOptionsPage(), 2000);
+        }
+        else if (ds.length === 2 && prefs.doMerge) {
+          // we now allow OPUS for muxing; if vInfo === 'mp4', change container to MKV
+          if (prefs.opusmixing && request.format.container === 'mp4') {
+            extension = 'mkv';
+          }
+          ffmpeg.resolve(root, leafname, extension).then(output => {
+            return ffmpeg.convert(prefs.ffmpeg, prefs.commands.muxing, {
+              '%audio': ad.filename,
+              '%video': vd.filename,
+              '%output': output
             });
-            window.setTimeout(() => chrome.runtime.openOptionsPage(), 2000);
-          }
-          else if (ds.length === 2 && prefs.doMerge) {
-            // we now allow OPUS for muxing; if vInfo === 'mp4', change container to MKV
-            if (extension === 'mp4' && prefs.opusmixing) {
-              extension = 'mkv';
+          }).then(() => {
+            if (prefs.remove) {
+              return ffmpeg.remove([vd.filename, ad.filename]);
             }
-            leafname = leafname.replace(' - DASH', '');
-            ffmpeg.resolve(root, leafname, extension).then(output => {
-              return ffmpeg.convert(prefs.ffmpeg, prefs.commands.muxing, {
-                '%audio': aInfo.filename,
-                '%video': vInfo.filename,
-                '%output': output
-              });
-            }).then(() => {
-              if (prefs.remove) {
-                return ffmpeg.remove([aInfo.filename, vInfo.filename]);
-              }
-            }).catch(e => notify(e));
+          }).catch(e => notify(e));
+        }
+        // extract audio
+        else if (ds.length === 1 && request.dash !== 'v' && prefs.toAudio && prefs.ffmpeg) {
+          let newExtension = extension;
+          if (['weba', 'webm', 'ogg', 'vorbis'].indexOf(extension) !== -1) {
+            newExtension = 'webm';
           }
-          // extract audio
-          else if (ds.length === 1 && vInfo.dash !== 'v' && prefs.toAudio && prefs.ffmpeg) {
-            switch (extension) {
-            case 'weba':
-            case 'webm':
-            case 'ogg':
-            case 'vorbis':
-              extension = 'ogg';
-              break;
-            case 'opus':
-              break;
-            case 'aac':
-              break;
-            case 'mp4':
-            case 'm4a':
-              extension = 'm4a';
-              break;
-            default:
-              extension = 'mka'; // "MKA" container format can store a huge number of audio codecs.
+          else if (extension === 'mp4') {
+            newExtension = 'm4a';
+          }
+
+          ffmpeg.resolve(root, leafname, newExtension).then(output => {
+            return ffmpeg.convert(prefs.ffmpeg, prefs.commands.toAudio, {
+              '%input': vd.filename,
+              '%output': output
+            });
+          }).then(() => {
+            if (prefs.remove) {
+              return ffmpeg.remove([vd.filename]);
             }
-            leafname = leafname.replace(' - DASH', '');
-            ffmpeg.resolve(root, leafname, extension).then(output => {
-              return ffmpeg.convert(prefs.ffmpeg, prefs.commands.toAudio, {
-                '%input': vInfo.filename,
-                '%output': output
-              });
-            }).then(() => {
-              if (prefs.remove) {
-                return ffmpeg.remove([vInfo.filename]);
-              }
-            }).catch(e => notify(e));
-          }
-          // convert to mp3
-          else if (ds.length === 1 && vInfo.dash !== 'v' && prefs.toMP3 && prefs.ffmpeg) {
-            ffmpeg.resolve(root, leafname, 'mp3').then(output => {
-              return ffmpeg.convert(prefs.ffmpeg, prefs.commands.toMP3, {
-                '%input': vInfo.filename,
-                '%output': output
-              });
-            }).catch(e =>notify(e));
-          }
-        },
-        e => notify(e)
-      );
+          }).catch(e => notify(e));
+        }
+        // convert to mp3
+        else if (ds.length === 1 && request.dash !== 'v' && prefs.toMP3 && prefs.ffmpeg) {
+          ffmpeg.resolve(root, leafname, 'mp3').then(output => {
+            return ffmpeg.convert(prefs.ffmpeg, prefs.commands.toMP3, {
+              '%input': vd.filename,
+              '%output': output
+            });
+          }).catch(e =>notify(e));
+        }
+      },
+      e => notify(e));
     });
   }
   else if (request.method === 'fetch') {

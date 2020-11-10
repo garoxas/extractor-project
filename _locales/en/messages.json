@@ -101,6 +101,9 @@
   "opt_512": {
     "message": "Open FAQs page on updates"
   },
+  "opt_ffmpeg": {
+    "message": "It is recommended to manually install the latest version of FFmpeg from https://www.ffmpeg.org/download.html and insert the executable path here"
+  },
   "error_1": {
     "message": "Your OS is not yet supported"
   },

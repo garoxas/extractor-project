@@ -18,7 +18,7 @@ ffmpeg.convert = function(command, args, dictionary) {
       arguments: args
     }, obj => {
       if (!obj || obj.error || (obj.code && obj.code !== 0)) {
-        console.error(obj);
+        console.warn('ffmpeg', obj);
         reject(new Error(obj ? obj.error || obj.stderr || obj.stdout : 'error_12'));
       }
       else {
@@ -33,7 +33,16 @@ ffmpeg.parent = path => {
 };
 
 ffmpeg.extract = path => {
-  return path.split(ffmpeg.sep).pop().split('.');
+  const s = path.split(ffmpeg.sep).pop();
+  if (s.indexOf('.') === -1) {
+    return [s, ''].map(a => a.trim());
+  }
+  else {
+    const a = s.split('.');
+    const e = a.pop();
+
+    return [a.join('.'), e].map(a => a.trim());
+  }
 };
 
 ffmpeg.resolve = (path, name, extension) => {

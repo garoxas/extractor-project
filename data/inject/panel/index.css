@@ -140,3 +140,8 @@ body[data-integration=true] #externals {
 [align=center] {
   align-items: center;
 }
+
+[data-disabled=true] {
+  opacity: 0.5;
+  pointer-events: none;
+}

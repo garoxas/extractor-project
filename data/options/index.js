@@ -2,34 +2,34 @@
 'use strict';
 
 document.addEventListener('click', e => {
-  let cmd = e.target.dataset.cmd;
+  const cmd = e.target.dataset.cmd;
   if (cmd === 'reset') {
     e.target.parentNode.parentNode.querySelector('input').value = e.target.dataset.value;
   }
 });
 document.addEventListener('change', e => {
   if (e.target.dataset.cmd === 'insert') {
-    let patern = document.getElementById('pattern');
-    let {value, selectionStart, selectionEnd} = patern;
+    const patern = document.getElementById('pattern');
+    const {value, selectionStart, selectionEnd} = patern;
     patern.value = value.substr(0, selectionStart) + e.target.value + value.substr(selectionEnd);
     patern.focus();
   }
 });
 
 function save() {
-  let ffmpeg = document.getElementById('ffmpeg').value;
-  let doMerge = document.getElementById('doMerge').checked;
-  let pretendHD = document.getElementById('pretendHD').checked;
-  let remove = document.getElementById('remove').checked;
-  let toAudio = document.getElementById('post-process').value === 'audio';
-  let toMP3 = document.getElementById('post-process').value === 'mp3';
-  let opusmixing = document.getElementById('opusmixing').checked;
-  let pattern = document.getElementById('pattern').value;
-  let savein = document.getElementById('savein').value;
-  let saveAs = document.getElementById('saveAs').checked;
-  let faqs = document.getElementById('faqs').checked;
-  let notification = document.getElementById('notification').checked;
-  let commands = {
+  const ffmpeg = document.getElementById('ffmpeg').value;
+  const doMerge = document.getElementById('doMerge').checked;
+  const pretendHD = document.getElementById('pretendHD').checked;
+  const remove = document.getElementById('remove').checked;
+  const toAudio = document.getElementById('post-process').value === 'audio';
+  const toMP3 = document.getElementById('post-process').value === 'mp3';
+  const opusmixing = document.getElementById('opusmixing').checked;
+  const pattern = document.getElementById('pattern').value;
+  const savein = document.getElementById('savein').value;
+  const saveAs = document.getElementById('saveAs').checked;
+  const faqs = document.getElementById('faqs').checked;
+  const notification = document.getElementById('notification').checked;
+  const commands = {
     toAudio: document.getElementById('toAudio').value,
     toMP3: document.getElementById('toMP3').value,
     muxing: document.getElementById('muxing').value

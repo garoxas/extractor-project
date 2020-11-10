@@ -1,14 +1,14 @@
 /* globals download, locale */
 'use strict';
 
-function notify (message) {
+function notify(message) {
   chrome.runtime.sendMessage({
     method: 'message',
     message: message.message || message
   });
 }
 
-function url () {
+function url() {
   let os = /windows|mac|linux/i.exec(navigator.userAgent);
   if (os) {
     os = os[0].toLowerCase();
@@ -18,13 +18,13 @@ function url () {
   }
 
   return new Promise((resolve, reject) => {
-    let req = new window.XMLHttpRequest();
+    const req = new window.XMLHttpRequest();
     req.open('GET', 'https://api.github.com/repos/inbasic/ffmpeg/releases/latest');
     req.responseType = 'json';
     req.onload = () => {
       try {
         let name = 'ffmpeg-';
-        let platform = navigator.platform;
+        const platform = navigator.platform;
         if (platform === 'Win32') {
           name += 'win32-ia32.exe';
         }
@@ -56,7 +56,7 @@ function url () {
   });
 }
 
-function move (source, target) {
+function move(source, target) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendNativeMessage('com.add0n.node', {
       cmd: 'copy',
@@ -75,23 +75,20 @@ function move (source, target) {
   });
 }
 
-function ffmpeg () {
+function ffmpeg() {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendNativeMessage('com.add0n.node', {
       cmd: 'spec'
     }, response => {
-      let button = document.querySelector('[data-cmd=install-native]');
+      const button = document.querySelector('[data-cmd=install-native]');
       if (response) {
         button.value = locale.get('opt_014');
         url().then(format => {
           return download.get({
-            info: {
-              formats: [Object.assign(format, {
-                itag: 1,
-                name: format.name
-              })]
-            },
-            itag: 1
+            format: Object.assign(format, {
+              container: ''
+            }),
+            filename: format.name
           }, {}).then(([d]) => {
             const name = navigator.platform.startsWith('Win') ? 'ffmpeg.exe' : 'ffmpeg';
             return move(d.filename, (response.env.APPDATA || response.env.HOME) + response.separator + name);
@@ -114,7 +111,7 @@ document.addEventListener('click', e => {
     });
   }
   else if (cmd === 'download-ffmpeg') {
-    let button = document.querySelector('[data-cmd=download-ffmpeg]');
+    const button = document.querySelector('[data-cmd=download-ffmpeg]');
     button.value = locale.get('opt_018');
     button.disabled = true;
     ffmpeg().then(

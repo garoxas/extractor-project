@@ -28,75 +28,84 @@ else {
 
 function quickDownload() {
   return new Promise((resolve, reject) => {
-    chrome.tabs.executeScript(tab.id, {
-      allFrames: false,
-      code: `info`
-    }, ([info]) => {
-      if (info) {
-        chrome.storage.local.get({
-          doMerge: true,
-          ffmpeg: ''
-        }, prefs => {
-          youtube.perform(info.id, info.author, info.title).then(info => {
-            const format = document.querySelector('[name=format]:checked').id;
-            let formats = info.formats.filter(o => o.container === format)
-              .filter(o => o.dash !== 'a')
-              .filter(o => !o.dash || (prefs.ffmpeg && prefs.doMerge))
-              .sort((a, b) => parseInt(b.resolution) - parseInt(a.resolution));
-            if (formats.length) {
-              const quality = document.querySelector('[name=quality]:checked').id;
-              if (quality === '1080p') {
-                formats = [
-                  formats.filter(o => o.resolution === '1080p').shift(),
-                  ...formats
-                ].filter(o => o);
-              }
-              else if (quality === '720p') {
-                formats = [
-                  formats.filter(o => o.resolution === '720p').shift(),
-                  formats.filter(o => o.resolution === '1080p').shift(),
-                  ...formats
-                ].filter(o => o);
-              }
-              else if (quality === 'high') {
-                formats = [
-                  formats.filter(o => o.resolution === '480p').shift(),
-                  formats.filter(o => o.resolution === '360p').shift(),
-                  formats.filter(o => o.resolution === '720p').shift(),
-                  formats.filter(o => o.resolution === '1080p').shift(),
-                  ...formats
-                ].filter(o => o);
-              }
-              else if (quality === 'medium') {
-                formats = [
-                  formats.filter(o => o.resolution === '240p').shift(),
-                  formats.filter(o => o.resolution === '360p').shift(),
-                  formats.filter(o => o.resolution === '480p').shift(),
-                  formats.filter(o => o.resolution === '720p').shift(),
-                  formats.filter(o => o.resolution === '1080p').shift(),
-                  ...formats
-                ].filter(o => o);
-              }
-              else if (quality === 'small') {
-                formats = formats.reverse();
-              }
-              chrome.runtime.sendMessage({
-                method: 'download',
-                info,
-                itag: formats[0].itag
-              });
-              resolve();
-            }
-            else {
-              reject(new Error('error_7'));
-            }
-          }).catch(reject);
+    const next = () => window.getFullInfo(tab.url).then(info => chrome.storage.local.get({
+      doMerge: true,
+      ffmpeg: '',
+      pattern: '[file_name].[extension]'
+    }, prefs => {
+      const format = document.querySelector('[name=format]:checked').id;
+      let formats = info.formats.filter(o => o.container === format)
+        .filter(o => o.mimeType.startsWith('video/'))
+        .filter(o => o.audioBitrate || (prefs.ffmpeg && prefs.doMerge))
+        .sort((a, b) => b.bitrate - a.bitrate);
+      if (formats.length) {
+        const quality = document.querySelector('[name=quality]:checked').id;
+        if (quality === '1080p') {
+          formats = [
+            formats.filter(o => o.qualityLabel === '1080p').shift(),
+            ...formats
+          ].filter(o => o);
+        }
+        else if (quality === '720p') {
+          formats = [
+            formats.filter(o => o.qualityLabel === '720p').shift(),
+            formats.filter(o => o.qualityLabel === '1080p').shift(),
+            ...formats
+          ].filter(o => o);
+        }
+        else if (quality === 'high') {
+          formats = [
+            formats.filter(o => o.qualityLabel === '480p').shift(),
+            formats.filter(o => o.qualityLabel === '360p').shift(),
+            formats.filter(o => o.qualityLabel === '720p').shift(),
+            formats.filter(o => o.qualityLabel === '1080p').shift(),
+            ...formats
+          ].filter(o => o);
+        }
+        else if (quality === 'medium') {
+          formats = [
+            formats.filter(o => o.qualityLabel === '240p').shift(),
+            formats.filter(o => o.qualityLabel === '360p').shift(),
+            formats.filter(o => o.qualityLabel === '480p').shift(),
+            formats.filter(o => o.qualityLabel === '720p').shift(),
+            formats.filter(o => o.qualityLabel === '1080p').shift(),
+            ...formats
+          ].filter(o => o);
+        }
+        else if (quality === 'small') {
+          formats = formats.reverse();
+        }
+        const filename = prefs.pattern
+          .replace('[file_name]', info.videoDetails.title)
+          .replace('.[extension]', '')
+          .replace('[extension]', '')
+          .replace('[author]', info.videoDetails.author.name)
+          .replace('[video_id]', info.videoDetails.videoId)
+          .replace('[published_date]', info.videoDetails.publishDate);
+
+        chrome.runtime.sendMessage({
+          method: 'download',
+          filename,
+          format: formats[0],
+          dash: formats[0].audioBitrate ? '' : 'v',
+          formats: info.formats
         });
+        if (Array.isArray(formats[0].url) === false) {
+          resolve();
+        }
       }
       else {
-        reject(new Error('error_8'));
+        reject(new Error('error_7'));
       }
-    });
+    }));
+    if (window.dd) {
+      next();
+    }
+    else {
+      const s = document.getElementById('youtube');
+      s.onload = next;
+      s.src = '/data/inject/youtbe-dl/youtube.js';
+    }
   });
 }
 
@@ -170,6 +179,18 @@ document.addEventListener('click', e => {
         div.querySelector('span').textContent = locale.get('pp_1');
       }
     );
+  }
+});
+
+chrome.runtime.onMessage.addListener(request => {
+  if (request.method === 'progress') {
+    const div = document.querySelector('[data-cmd="quick-download"]');
+    div.dataset.working = true;
+    const {current, total} = request.progress;
+    div.querySelector('span').textContent = (current / total * 100).toFixed(0) + '%';
+    if (current === total) {
+      window.close();
+    }
   }
 });
 

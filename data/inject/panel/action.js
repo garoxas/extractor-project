@@ -1,22 +1,26 @@
-/* globals youtube, build, items, info */
+/* globals build, items */
 'use strict';
 
 const args = new URLSearchParams(location.search);
 
-youtube.perform(
-  args.get('id'),
-  args.get('author'),
-  args.get('title')
-).then(
-  info => build(info),
-  e => {
+const s = document.getElementById('youtube');
+s.onload = () => {
+  window.getFullInfo(args.get('href')).then(o => {
+    build(o);
+    if (o.formats.length === 0) {
+      items.setAttribute('pack', 'center');
+      items.setAttribute('align', 'center');
+      items.textContent = 'No Link Available for This Video';
+    }
+  }).catch(e => {
     document.body.dataset.loading = false;
     items.setAttribute('pack', 'center');
     items.setAttribute('align', 'center');
     items.textContent = e.message;
-    console.error(e);
-  }
-);
+    console.warn(e);
+  });
+};
+s.src = '../youtbe-dl/youtube.js';
 
 document.addEventListener('click', e => {
   const cmd = e.target.dataset.cmd;
@@ -46,6 +50,7 @@ document.addEventListener('click', e => {
     const item = document.querySelector('.item[data-toolbar=true]');
     if (item) {
       let id = 'pabnknalmhfecdheflmcaehlepmhjlaa';
+
       let link = 'https://chrome.google.com/webstore/detail/pabnknalmhfecdheflmcaehlepmhjlaa';
       if (navigator.userAgent.indexOf('Firefox') !== -1) {
         id = 'jid0-dsq67mf5kjjhiiju2dfb6kk8dfw@jetpack';
@@ -60,32 +65,66 @@ document.addEventListener('click', e => {
         link = 'https://microsoftedge.microsoft.com/addons/detail/mkgpbehnmcnadhklbcigfbehjfnpdblf';
       }
 
-      chrome.runtime.sendMessage(id, {
-        method: 'add-jobs',
-        jobs: [{
-          link: item.href,
-          threads: 3
-        }]
-      }, resp => {
-        if (!resp) {
-          chrome.tabs.create({
-            url: link
-          });
-        }
+      chrome.storage.local.get({
+        pattern: '[file_name].[extension]'
+      }, prefs => {
+        const o = document.getElementById('items').o;
+        const {format} = item;
+        const filename = prefs.pattern
+          .replace('[file_name]', o.videoDetails.title)
+          .replace('.[extension]', '.' + format.container)
+          .replace('[extension]', format.container)
+          .replace('[author]', o.videoDetails.author.name)
+          .replace('[video_id]', o.videoDetails.videoId)
+          .replace('[video_resolution]', format.qualityLabel)
+          .replace('[audio_bitrate]', format.audioBitrate)
+          .replace('[published_date]', o.videoDetails.publishDate);
+        const job = {
+          threads: 3,
+          filename
+        };
+        job[Array.isArray(format.url) ? 'links' : 'link'] = format.url;
+        chrome.runtime.sendMessage(id, {
+          method: 'add-jobs',
+          jobs: [job]
+        }, resp => {
+          if (!resp) {
+            chrome.tabs.create({
+              url: link
+            });
+          }
+        });
       });
     }
   }
   // do not load audio or video files inside the iframe
   const a = e.target.closest('a');
   if (a) {
-    if (a.dataset.itag) {
-      chrome.runtime.sendMessage({
-        method: 'download',
-        info,
-        itag: a.dataset.itag
+    if (a.format) {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const o = document.getElementById('items').o;
+
+      chrome.storage.local.get({
+        pattern: '[file_name].[extension]'
+      }, prefs => {
+        const {format, dash} = a;
+        const filename = prefs.pattern
+          .replace('[file_name]', o.videoDetails.title)
+          .replace('.[extension]', '')
+          .replace('[extension]', '')
+          .replace('[author]', o.videoDetails.author.name)
+          .replace('[video_id]', o.videoDetails.videoId)
+          .replace('[published_date]', o.videoDetails.publishDate);
+        chrome.runtime.sendMessage({
+          method: 'download',
+          filename,
+          format,
+          dash,
+          formats: o.formats
+        });
       });
     }
-    e.stopPropagation();
-    e.preventDefault();
   }
 });
