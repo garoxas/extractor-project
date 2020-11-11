@@ -113,10 +113,10 @@ download.get = (request, {doMerge, pretendHD, opusmixing, saveAs}, progress = ()
       }
     };
     chrome.downloads.download(options, id => {
-      if (chrome.runtime.lastError) {
+      if (chrome.runtime.lastError && id.error != "USER_CANCELED") {
         options.filename = options.filename.replace(/\s/g, '-');
         chrome.downloads.download(options, id => {
-          if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError && id.error != "USER_CANCELED") {
             delete options.filename;
             chrome.downloads.download(options, next);
           }

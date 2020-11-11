@@ -2,7 +2,7 @@
   "name": "YouTube Video and Audio Downloader (Dev Edt.)",
   "description": "__MSG_appDesc__",
   "author": "Feller",
-  "version": "1.1.2",
+  "version": "1.1.2.1",
   "manifest_version": 2,
   "default_locale": "en",
   "permissions": [
