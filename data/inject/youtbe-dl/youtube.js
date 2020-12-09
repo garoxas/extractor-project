@@ -5,6 +5,8 @@
 
 
 window.getFullInfo = async href => {
+  await import('./vendor/cache.js');
+  window.Cache = window.module.exports;
   await import('./vendor/formats.js');
   window.formats = Object.assign({}, window.module.exports);
   await import('./vendor/utils.js');

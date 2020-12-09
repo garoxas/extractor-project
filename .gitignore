@@ -3,3 +3,4 @@ node_modules/
 test/
 .DS_Store
 Thumbs.db
+web-ext-artifacts/

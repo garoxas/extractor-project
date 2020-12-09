@@ -4,54 +4,16 @@ window.exports = {};
 window.module = {
   exports: {}
 };
+// disable updates
+window.process = {
+  env: {
+    YTDL_NO_UPDATE: true
+  }
+};
 
 window.require = name => {
   // console.log(name);
   if (name === './cache') {
-    window.Cache = class Cache extends Map {
-      constructor(timeout = 1000) {
-        super();
-        this.timeout = timeout;
-      }
-      /*  */
-      set(key, value) {
-        super.set(key, {'tid': setTimeout(this.delete.bind(this, key), this.timeout), value});
-      }
-      /*  */
-      clear() {
-        for (const entry of this.values()) clearTimeout(entry.tid);
-        super.clear();
-      }
-      /*  */
-      delete(key) {
-        const entry = super.get(key);
-        if (entry) {
-          clearTimeout(entry.tid);
-          super.delete(key);
-        }
-      }
-      /*  */
-      get(key) {
-        const entry = super.get(key);
-        if (entry) {
-          return entry.value;
-        }
-        /*  */
-        return null;
-      }
-      /*  */
-      async getOrSet(key, fn) {
-        if (this.has(key)) {
-          return this.get(key);
-        }
-        else {
-          const value = await fn();
-          this.set(key, value);
-          return value;
-        }
-      }
-    };
-    /*  */
     return window.Cache;
   }
   else if (name === './utils') {
@@ -76,10 +38,11 @@ window.require = name => {
     return window.sig;
   }
   else if (name === 'miniget') {
-    return (href, options = {}) => {
+    const r = (href, options = {}) => {
       options.headers = options.headers || {};
       options.headers.Cache = 'no-store';
       options.headers['Cache-Control'] = 'no-store';
+      options.maxRetries = options.maxRetries || 0;
 
       return {
         setEncoding() {},
@@ -93,6 +56,10 @@ window.require = name => {
         }
       };
     };
+    r.defaultOptions = {
+      maxRetries: 1
+    };
+    return r;
   }
   else if (name === 'url') {
     return {
