@@ -2,6 +2,7 @@
 //  https://www.youtube.com/watch?v=G4fxtGH_lrU -> segmented
 //  https://www.youtube.com/watch?v=7lTDkfZs_5s -> no audio bitrate
 //  https://www.youtube.com/watch?v=23UGN3qqBWY -> filename with "."
+//  https://www.youtube.com/watch?v=yMzMcvzcKag -> with two normal streams
 
 
 window.getFullInfo = async href => {
@@ -84,11 +85,28 @@ window.getFullInfo = async href => {
       }
       return f;
     }).sort((a, b) => {
+      if (a.mimeType.startsWith('audio/') && b.mimeType.startsWith('video/')) {
+        return 1;
+      }
+      if (a.mimeType.startsWith('video/') && b.mimeType.startsWith('audio/')) {
+        return -1;
+      }
+      if (a.mimeType.startsWith('video/') && b.mimeType.startsWith('video/')) {
+        if (a.audioBitrate && !b.audioBitrate) {
+          return -1;
+        }
+        if (!a.audioBitrate && b.audioBitrate) {
+          return 1;
+        }
+        if (a.qualityLabel && b.qualityLabel && a.qualityLabel !== b.qualityLabel) {
+          return parseInt(b.qualityLabel) - parseInt(a.qualityLabel);
+        }
+        return b.bitrate - a.bitrate;
+      }
       if (a.mimeType.startsWith('audio/') && b.mimeType.startsWith('audio/')) {
         return b.audioBitrate - a.audioBitrate;
       }
     });
-
     return o;
   });
 };

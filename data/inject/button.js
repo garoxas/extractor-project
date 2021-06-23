@@ -26,7 +26,9 @@ function prepare(button, ...cnames) {
 // new UI
 {
   const observe = () => {
-    const top = document.querySelector('ytd-video-primary-info-renderer #top-level-buttons');
+    const top =
+      document.querySelector('ytd-video-primary-info-renderer #top-level-buttons-computed') ||
+      document.querySelector('ytd-video-primary-info-renderer #top-level-buttons');
     if (top) {
       try {
         const sample = top.querySelector('ytd-button-renderer');

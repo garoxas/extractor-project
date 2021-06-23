@@ -84,10 +84,12 @@ img {
   left: 0;
   height: 70vh;
   box-sizing: border-box;
-  transition: transform 200ms;
+  transition: transform 200ms, opacity 200ms;
+  opacity: 0;
 }
 body[data-settings=true] #settings{
   transform: translate(0, -70vh);
+  opacity: 1;
 }
 #settings>div {
   background-color: transparent;

@@ -25,6 +25,19 @@ window.require = name => {
   else if (name === './info-extras') {
     return window.extras;
   }
+  else if (name === 'timers') {
+    return {
+      setTimeout(...args) {
+        setTimeout(...args);
+        return {
+          unref() {}
+        };
+      }
+    };
+  }
+  else if (name === 'url') {
+    return window;
+  }
   else if (name === './url-utils') {
     return window.urlUtils;
   }
