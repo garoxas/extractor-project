@@ -203,7 +203,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
   const page = getManifest().homepage_url;
   onInstalled.addListener(({reason, previousVersion}) => {
     chrome.storage.local.get({
-      'faqs': false,
+      'faqs': true,
       'last-update': 0
     }, prefs => {
       if (reason === 'install' || (prefs.faqs && reason === 'update')) {

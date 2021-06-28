@@ -1,4 +1,4 @@
-/* globals youtube, locale */
+/* globals locale */
 'use strict';
 let tab;
 
